@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { useKnowledgeBases } from "@/hooks/use-knowledge-bases"
 import { Loader2 } from "lucide-react"
 import axios from "axios"
@@ -21,13 +22,14 @@ import axios from "axios"
 const COUNTRIES = ["USA", "Canada", "United Kingdom", "Germany", "India", "Australia", "Japan"]
 
 export function AddKnowledgeBaseDialog() {
-  const { add } = useKnowledgeBases()
+  const { refresh } = useKnowledgeBases()
   const [open, setOpen] = React.useState(false)
 
   const [naicsCode, setNaicsCode] = React.useState<string>("")
   const [industryName, setIndustryName] = React.useState<string>("")
   const [country, setCountry] = React.useState<string>("USA")
   const [targetIndustry, setTargetIndustry] = React.useState<string>("")
+  const [display, setDisplay] = React.useState<boolean>(true)
   const [isLoadingNaics, setIsLoadingNaics] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [naicsError, setNaicsError] = React.useState<string>("")
@@ -39,6 +41,7 @@ export function AddKnowledgeBaseDialog() {
     setIndustryName("")
     setCountry("USA")
     setTargetIndustry("")
+    setDisplay(true)
     setNaicsError("")
   }
 
@@ -96,25 +99,21 @@ export function AddKnowledgeBaseDialog() {
     setIsSubmitting(true)
 
     try {
-      // Call the generateMEP API
+      // Call the generateMEP API with display parameter
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/generateMEP`,
+        `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/generateIndustryKb`,
         {
           industry: industryName.trim(),
           country: country,
           industry_created_for: targetIndustry.trim(),
+          display: display,
         }
       )
 
       console.log("MEP generated successfully:", response.data)
 
-      // Add to knowledge base after successful API call
-      add({
-        naicsCode: country === "USA" && naicsCode ? naicsCode : undefined,
-        industryName: industryName.trim(),
-        country,
-        targetIndustry: targetIndustry.trim(),
-      })
+      // Refresh the knowledge base list after successful API call
+      refresh()
 
       resetForm()
       setOpen(false)
@@ -243,6 +242,21 @@ export function AddKnowledgeBaseDialog() {
               value={targetIndustry}
               onChange={(e) => setTargetIndustry(e.target.value)}
               placeholder="e.g., Healthcare Providers"
+            />
+          </div>
+
+          {/* Display Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="display">Display</Label>
+              <p className="text-xs text-muted-foreground">
+                Show this knowledge base in the list
+              </p>
+            </div>
+            <Switch
+              id="display"
+              checked={display}
+              onCheckedChange={setDisplay}
             />
           </div>
 
