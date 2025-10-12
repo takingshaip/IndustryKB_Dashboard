@@ -1,21 +1,9 @@
 "use client"
 import { useKnowledgeBases, type KnowledgeBase } from "@/hooks/use-knowledge-bases"
 import { Button } from "@/components/ui/button"
-import { Download, ChevronLeft, ChevronRight } from "lucide-react"
+import { Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { useState } from "react"
-
-function downloadJSON(filename: string, data: unknown) {
-  const json = JSON.stringify(data, null, 2)
-  const blob = new Blob([json], { type: "application/json;charset=utf-8" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
-}
+import axios from "axios"
 
 const ITEMS_PER_PAGE = 10
 
@@ -112,6 +100,45 @@ export function KnowledgeBaseTable() {
 }
 
 function Row({ kb }: { kb: KnowledgeBase }) {
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const downloadMarkdown = async () => {
+    if (!kb.status) {
+      alert("Knowledge base is not active yet. Please wait for processing to complete.")
+      return
+    }
+
+    setIsDownloading(true)
+    try {
+      // Replace with your actual API base URL
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ;
+      const url = `${API_BASE_URL}/marketentry-playbook/downloadWiki`
+      
+      const response = await axios.post(url, {
+        industryname: kb.name,
+        country: kb.country
+      }, {
+        responseType: 'blob' // Important for handling binary data
+      })
+      
+      // Create download link from blob
+      const blob = new Blob([response.data], { type: 'text/markdown' })
+      const downloadUrl = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = downloadUrl
+      a.download = `${kb.name}_${kb.country}_knowledge_base.md`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(downloadUrl)
+    } catch (error) {
+      console.error("Download error:", error)
+      alert(`Failed to download knowledge base: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <tr className="border-b border-border">
       <td className="px-4 py-3 align-middle">
@@ -135,11 +162,16 @@ function Row({ kb }: { kb: KnowledgeBase }) {
             variant="ghost"
             size="icon"
             aria-label={`Download ${kb.name} knowledge base`}
-            onClick={() => downloadJSON(`knowledge-base-${kb.id}.json`, kb)}
-            className="hover:bg-accent hover:text-accent-foreground"
-            title="Download JSON"
+            onClick={downloadMarkdown}
+            disabled={!kb.status || isDownloading}
+            className="hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+            title={kb.status ? "Download Markdown" : "Processing... Download will be available soon"}
           >
-            <Download className="size-5" />
+            {isDownloading ? (
+              <Loader2 className="size-5 animate-spin" />
+            ) : (
+              <Download className="size-5" />
+            )}
             <span className="sr-only">Download</span>
           </Button>
         </div>
