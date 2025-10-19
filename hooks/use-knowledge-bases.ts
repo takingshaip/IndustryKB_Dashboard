@@ -3,8 +3,12 @@ import useSWR from "swr"
 
 export type KnowledgeBase = {
   id: string
-  name: string
+  name: string,
+  primary_industry: string
+  industry_created_for: string
   country: string
+  display: boolean
+  naicsCode: string
   status: boolean
   _id: string
 }
@@ -13,7 +17,11 @@ type APIResponse = {
   industryKbs: Array<{
     _id: string
     name: string
+    primary_industry: string
+    industry_created_for: string
+    naicsCode: string
     country: string
+    display: boolean
     status: boolean
   }>
 }
@@ -31,7 +39,11 @@ const fetcher = async (): Promise<KnowledgeBase[]> => {
   return data.industryKbs.map(kb => ({
     id: kb._id,
     _id: kb._id,
+    primary_industry: kb.primary_industry,
     name: kb.name,
+    industry_created_for: kb.industry_created_for, 
+    naicsCode: kb.naicsCode,
+    display:kb.display,
     country: kb.country,
     status: kb.status,
   }))

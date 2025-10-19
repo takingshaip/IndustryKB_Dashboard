@@ -29,6 +29,7 @@ export function AddKnowledgeBaseDialog() {
   const [industryName, setIndustryName] = React.useState<string>("")
   const [country, setCountry] = React.useState<string>("USA")
   const [targetIndustry, setTargetIndustry] = React.useState<string>("")
+   const [primaryIndustry, setPrimaryIndustry] = React.useState<string>("")
   const [display, setDisplay] = React.useState<boolean>(true)
   const [isLoadingNaics, setIsLoadingNaics] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -39,6 +40,7 @@ export function AddKnowledgeBaseDialog() {
   function resetForm() {
     setNaicsCode("")
     setIndustryName("")
+    setPrimaryIndustry("")
     setCountry("USA")
     setTargetIndustry("")
     setDisplay(true)
@@ -106,6 +108,7 @@ export function AddKnowledgeBaseDialog() {
           industry: industryName.trim(),
           country: country,
           industry_created_for: targetIndustry.trim(),
+          primary_industry: primaryIndustry.trim(),
           display: display,
         }
       )
@@ -133,6 +136,7 @@ export function AddKnowledgeBaseDialog() {
   React.useEffect(() => {
     if (country !== "USA") {
       setNaicsCode("")
+      setPrimaryIndustry("")
       setNaicsError("")
     }
   }, [country])
@@ -221,9 +225,21 @@ export function AddKnowledgeBaseDialog() {
             </div>
           )}
 
+            <div className="grid gap-2">
+              <Label htmlFor="primaryIndustry">Primary Industry Name</Label>
+              <Input
+                id="primaryIndustry"
+                type="text"
+                value={primaryIndustry}
+                onChange={(e) => setPrimaryIndustry(e.target.value)}
+                placeholder="e.g., Manufacturing"
+              />
+            </div>
+          
+
           {/* Industry Name */}
           <div className="grid gap-2">
-            <Label htmlFor="industryName">Industry Name</Label>
+            <Label htmlFor="industryName">Secondary Industry Name</Label>
             <Input
               id="industryName"
               type="text"

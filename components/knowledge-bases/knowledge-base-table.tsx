@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Download, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { useState } from "react"
 import axios from "axios"
+import { Switch } from "@/components/ui/switch"
 
 const ITEMS_PER_PAGE = 10
 
@@ -40,17 +41,29 @@ export function KnowledgeBaseTable() {
   return (
     <div className="w-full">
       <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[640px] border-t border-border text-sm">
+        <table className="w-full min-w-[800px] border-t border-border text-sm">
           <thead className="bg-muted text-muted-foreground">
             <tr>
               <th scope="col" className="px-4 py-3 text-left font-medium">
-                Industry Name
+                Primary Industry Name
+              </th>
+              <th scope="col" className="px-4 py-3 text-left font-medium">
+                Secondary Industry Name
+              </th>
+              <th scope="col" className="px-4 py-3 text-left font-medium">
+                NAICS Code 
+              </th>
+               <th scope="col" className="px-4 py-3 text-left font-medium">
+                Industry Created For Name
               </th>
               <th scope="col" className="px-4 py-3 text-left font-medium">
                 Target Country
               </th>
               <th scope="col" className="px-4 py-3 text-center font-medium">
                 Status
+              </th>
+              <th scope="col" className="px-4 py-3 text-center font-medium">
+                Display
               </th>
               <th scope="col" className="px-4 py-3 text-right font-medium">
                 Download
@@ -101,6 +114,29 @@ export function KnowledgeBaseTable() {
 
 function Row({ kb }: { kb: KnowledgeBase }) {
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isToggling, setIsToggling] = useState(false)
+  const [displayStatus, setDisplayStatus] = useState(kb.display ?? false)
+
+  const handleToggleDisplay = async (checked: boolean) => {
+    setIsToggling(true)
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+      const url = `${API_BASE_URL}/marketentry-playbook/marketEntryPlaybooks/${kb.id}`
+      
+      await axios.put(url, {
+        display: checked
+      })
+      
+      setDisplayStatus(checked)
+    } catch (error) {
+      console.error("Toggle error:", error)
+      alert(`Failed to update display status: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // Revert on error
+      setDisplayStatus(!checked)
+    } finally {
+      setIsToggling(false)
+    }
+  }
 
   const downloadMarkdown = async () => {
     if (!kb.status) {
@@ -110,18 +146,16 @@ function Row({ kb }: { kb: KnowledgeBase }) {
 
     setIsDownloading(true)
     try {
-      // Replace with your actual API base URL
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ;
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
       const url = `${API_BASE_URL}/marketentry-playbook/downloadWiki`
       
       const response = await axios.post(url, {
         industryname: kb.name,
         country: kb.country
       }, {
-        responseType: 'blob' // Important for handling binary data
+        responseType: 'blob'
       })
       
-      // Create download link from blob
       const blob = new Blob([response.data], { type: 'text/markdown' })
       const downloadUrl = URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -143,7 +177,22 @@ function Row({ kb }: { kb: KnowledgeBase }) {
     <tr className="border-b border-border">
       <td className="px-4 py-3 align-middle">
         <div className="flex flex-col">
+          <span className="font-medium">{kb.primary_industry}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-middle">
+        <div className="flex flex-col">
           <span className="font-medium">{kb.name}</span>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-middle">
+        <div className="flex flex-col">
+          <span className="font-medium">{kb.naicsCode}</span>
+        </div>
+      </td>
+       <td className="px-4 py-3 align-middle">
+        <div className="flex flex-col">
+          <span className="font-medium">{kb.industry_created_for}</span>
         </div>
       </td>
       <td className="px-4 py-3 align-middle">{kb.country}</td>
@@ -155,6 +204,16 @@ function Row({ kb }: { kb: KnowledgeBase }) {
         }`}>
           {kb.status ? 'Active' : 'Inactive'}
         </span>
+      </td>
+      <td className="px-4 py-3 align-middle">
+        <div className="flex items-center justify-center">
+          <Switch
+            checked={displayStatus}
+            onCheckedChange={handleToggleDisplay}
+            disabled={isToggling}
+            aria-label={`Toggle display for ${kb.name}`}
+          />
+        </div>
       </td>
       <td className="px-4 py-3 align-middle">
         <div className="flex items-center justify-end">
