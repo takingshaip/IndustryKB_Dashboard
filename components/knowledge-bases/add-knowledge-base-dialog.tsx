@@ -21,6 +21,15 @@ import axios from "axios"
 
 const COUNTRIES = ["USA", "Canada", "United Kingdom", "Germany", "India", "Australia", "Japan"]
 
+const PRIMARY_INDUSTRIES = [
+  "Process Industries",
+  "Retail",
+  "Consumer & CPG",
+  "Capital-Equipment Producers",
+  "High-Tech Discrete Manufacturing",
+  "Others"
+]
+
 export function AddKnowledgeBaseDialog() {
   const { refresh } = useKnowledgeBases()
   const [open, setOpen] = React.useState(false)
@@ -29,7 +38,8 @@ export function AddKnowledgeBaseDialog() {
   const [industryName, setIndustryName] = React.useState<string>("")
   const [country, setCountry] = React.useState<string>("USA")
   const [targetIndustry, setTargetIndustry] = React.useState<string>("")
-   const [primaryIndustry, setPrimaryIndustry] = React.useState<string>("")
+  const [primaryIndustry, setPrimaryIndustry] = React.useState<string>("")
+  const [customPrimaryIndustry, setCustomPrimaryIndustry] = React.useState<string>("")
   const [display, setDisplay] = React.useState<boolean>(true)
   const [isLoadingNaics, setIsLoadingNaics] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -41,6 +51,7 @@ export function AddKnowledgeBaseDialog() {
     setNaicsCode("")
     setIndustryName("")
     setPrimaryIndustry("")
+    setCustomPrimaryIndustry("")
     setCountry("USA")
     setTargetIndustry("")
     setDisplay(true)
@@ -101,6 +112,11 @@ export function AddKnowledgeBaseDialog() {
     setIsSubmitting(true)
 
     try {
+      // Determine the final primary industry value
+      const finalPrimaryIndustry = primaryIndustry === "Others" 
+        ? customPrimaryIndustry.trim() 
+        : primaryIndustry.trim()
+
       // Call the generateMEP API with display parameter
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/generateIndustryKb`,
@@ -108,7 +124,7 @@ export function AddKnowledgeBaseDialog() {
           industry: industryName.trim(),
           country: country,
           industry_created_for: targetIndustry.trim(),
-          primary_industry: primaryIndustry.trim(),
+          primary_industry: finalPrimaryIndustry,
           display: display,
         }
       )
@@ -225,19 +241,33 @@ export function AddKnowledgeBaseDialog() {
             </div>
           )}
 
-            <div className="grid gap-2">
-              <Label htmlFor="primaryIndustry">Primary Industry Name</Label>
+          {/* Primary Industry Dropdown */}
+          <div className="grid gap-2">
+            <Label htmlFor="primaryIndustry">Primary Industry Name</Label>
+            <Select value={primaryIndustry} onValueChange={setPrimaryIndustry}>
+              <SelectTrigger id="primaryIndustry" aria-label="Primary Industry">
+                <SelectValue placeholder="Select primary industry" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIMARY_INDUSTRIES.map((industry) => (
+                  <SelectItem key={industry} value={industry}>
+                    {industry}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {primaryIndustry === "Others" && (
               <Input
-                id="primaryIndustry"
                 type="text"
-                value={primaryIndustry}
-                onChange={(e) => setPrimaryIndustry(e.target.value)}
-                placeholder="e.g., Manufacturing"
+                value={customPrimaryIndustry}
+                onChange={(e) => setCustomPrimaryIndustry(e.target.value)}
+                placeholder="Enter custom industry name"
+                className="mt-2"
               />
-            </div>
-          
+            )}
+          </div>
 
-          {/* Industry Name */}
+          {/* Secondary Industry Name */}
           <div className="grid gap-2">
             <Label htmlFor="industryName">Secondary Industry Name</Label>
             <Input
