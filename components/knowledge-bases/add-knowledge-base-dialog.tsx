@@ -21,15 +21,6 @@ import axios from "axios"
 
 const COUNTRIES = ["USA", "Canada", "United Kingdom", "Germany", "India", "Australia", "Japan"]
 
-const PRIMARY_INDUSTRIES = [
-  "Process Industries",
-  "Retail",
-  "Consumer & CPG",
-  "Capital-Equipment Producers",
-  "High-Tech Discrete Manufacturing",
-  "Others"
-]
-
 export function AddKnowledgeBaseDialog() {
   const { refresh } = useKnowledgeBases()
   const [open, setOpen] = React.useState(false)
@@ -45,7 +36,42 @@ export function AddKnowledgeBaseDialog() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [naicsError, setNaicsError] = React.useState<string>("")
 
+  // New state for industry categories
+  const [industryCategories, setIndustryCategories] = React.useState<string[]>([])
+  const [isLoadingCategories, setIsLoadingCategories] = React.useState(false)
+  const [categoriesError, setCategoriesError] = React.useState<string>("")
+
   const isValidNaicsCode = /^\d{6}$/.test(naicsCode)
+
+  // Fetch industry categories on component mount
+  React.useEffect(() => {
+    async function fetchIndustryCategories() {
+      setIsLoadingCategories(true)
+      setCategoriesError("")
+
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/getIndustryCategories/`
+        )
+      
+          // Extract category names from response
+        const categories = response.data.categories.map((item: any) => item.name)
+
+        if (!categories.includes("Others")) {
+          categories.push("Others")
+        }
+
+        setIndustryCategories(categories)
+      } catch (error) {
+        console.error("Error fetching industry categories:", error)
+        setCategoriesError("Failed to load industry categories")
+      } finally {
+        setIsLoadingCategories(false)
+      }
+    }
+
+    fetchIndustryCategories()
+  }, [])
 
   function resetForm() {
     setNaicsCode("")
@@ -74,7 +100,7 @@ export function AddKnowledgeBaseDialog() {
           naicscode: parseInt(naicsCode, 10),
         }
       )
-      
+
       if (response.data.naicsData) {
         setIndustryName(response.data.naicsData["2022 NAICS US Title"])
         setNaicsError("")
@@ -108,25 +134,38 @@ export function AddKnowledgeBaseDialog() {
       alert("Please provide the industry created for.")
       return
     }
+    if (!primaryIndustry) {
+      alert("Please select a primary industry.")
+      return
+    }
+    if (primaryIndustry === "Others" && !customPrimaryIndustry.trim()) {
+      alert("Please enter a custom industry name.")
+      return
+    }
 
     setIsSubmitting(true)
 
     try {
-      // Determine the final primary industry value
-      const finalPrimaryIndustry = primaryIndustry === "Others" 
-        ? customPrimaryIndustry.trim() 
-        : primaryIndustry.trim()
+      // Build the payload based on whether "Others" is selected
+      const payload: any = {
+        industry: industryName.trim(),
+        country: country,
+        industry_created_for: targetIndustry.trim(),
+        display: display,
+      }
 
-      // Call the generateMEP API with display parameter
+      // If "Others" is selected, send the custom value with a specific key
+      if (primaryIndustry === "Others") {
+        payload.other_primary_industry = customPrimaryIndustry.trim()
+        payload.primary_industry = customPrimaryIndustry.trim();
+      } else {
+        payload.primary_industry = primaryIndustry.trim()
+      }
+
+      // Call the generateMEP API
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/generateIndustryKb`,
-        {
-          industry: industryName.trim(),
-          country: country,
-          industry_created_for: targetIndustry.trim(),
-          primary_industry: finalPrimaryIndustry,
-          display: display,
-        }
+        payload
       )
 
       console.log("MEP generated successfully:", response.data)
@@ -169,7 +208,7 @@ export function AddKnowledgeBaseDialog() {
         <DialogHeader>
           <DialogTitle>Add Knowledge Base</DialogTitle>
           <DialogDescription>
-            {country === "USA" 
+            {country === "USA"
               ? "Enter a 6-digit NAICS code to auto-fill the industry, or type it manually."
               : "Enter the industry name for your target country."}
           </DialogDescription>
@@ -192,7 +231,7 @@ export function AddKnowledgeBaseDialog() {
               </SelectContent>
             </Select>
           </div>
-          
+
           {/* NAICS code - Only show for USA */}
           {country === "USA" && (
             <div className="grid gap-2">
@@ -233,8 +272,8 @@ export function AddKnowledgeBaseDialog() {
               )}
               {naicsCode && !naicsError && (
                 <p className="text-xs text-muted-foreground">
-                  {isValidNaicsCode 
-                    ? "Click 'Fetch' to get the industry name from NAICS code" 
+                  {isValidNaicsCode
+                    ? "Click 'Fetch' to get the industry name from NAICS code"
                     : "Enter a complete 6-digit NAICS code"}
                 </p>
               )}
@@ -244,18 +283,27 @@ export function AddKnowledgeBaseDialog() {
           {/* Primary Industry Dropdown */}
           <div className="grid gap-2">
             <Label htmlFor="primaryIndustry">Primary Industry Name</Label>
-            <Select value={primaryIndustry} onValueChange={setPrimaryIndustry}>
-              <SelectTrigger id="primaryIndustry" aria-label="Primary Industry">
-                <SelectValue placeholder="Select primary industry" />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIMARY_INDUSTRIES.map((industry) => (
-                  <SelectItem key={industry} value={industry}>
-                    {industry}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isLoadingCategories ? (
+              <div className="flex items-center justify-center p-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading industries...
+              </div>
+            ) : categoriesError ? (
+              <div className="text-sm text-red-500">{categoriesError}</div>
+            ) : (
+              <Select value={primaryIndustry} onValueChange={setPrimaryIndustry}>
+                <SelectTrigger id="primaryIndustry" aria-label="Primary Industry">
+                  <SelectValue placeholder="Select primary industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {industryCategories.map((industry) => (
+                    <SelectItem key={industry} value={industry}>
+                      {industry}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {primaryIndustry === "Others" && (
               <Input
                 type="text"
@@ -307,16 +355,16 @@ export function AddKnowledgeBaseDialog() {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               onClick={onSubmit}
               disabled={isSubmitting}
               className="bg-primary text-primary-foreground hover:opacity-90"
