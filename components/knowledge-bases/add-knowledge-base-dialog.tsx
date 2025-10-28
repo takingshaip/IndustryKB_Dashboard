@@ -13,11 +13,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useKnowledgeBases } from "@/hooks/use-knowledge-bases"
-import { Loader2 } from "lucide-react"
+import { Loader2, Check, ChevronsUpDown } from "lucide-react"
 import axios from "axios"
+import { cn } from "@/lib/utils"
 
 const COUNTRIES = ["USA", "Canada", "United Kingdom", "Germany", "India", "Australia", "Japan"]
 
@@ -36,10 +50,16 @@ export function AddKnowledgeBaseDialog() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [naicsError, setNaicsError] = React.useState<string>("")
 
-  // New state for industry categories
+  // State for industry categories
   const [industryCategories, setIndustryCategories] = React.useState<string[]>([])
   const [isLoadingCategories, setIsLoadingCategories] = React.useState(false)
   const [categoriesError, setCategoriesError] = React.useState<string>("")
+
+  // State for Industry Created For combobox
+  const [industryCreatedForList, setIndustryCreatedForList] = React.useState<string[]>([])
+  const [isLoadingCreatedFor, setIsLoadingCreatedFor] = React.useState(false)
+  const [comboboxOpen, setComboboxOpen] = React.useState(false)
+  const [searchValue, setSearchValue] = React.useState("")
 
   const isValidNaicsCode = /^\d{6}$/.test(naicsCode)
 
@@ -54,7 +74,6 @@ export function AddKnowledgeBaseDialog() {
           `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/getIndustryCategories/`
         )
       
-          // Extract category names from response
         const categories = response.data.categories.map((item: any) => item.name)
 
         if (!categories.includes("Others")) {
@@ -73,6 +92,37 @@ export function AddKnowledgeBaseDialog() {
     fetchIndustryCategories()
   }, [])
 
+  // Fetch Industry Created For list
+  React.useEffect(() => {
+    async function fetchIndustryCreatedForList() {
+      setIsLoadingCreatedFor(true)
+
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/getIndustryCreatedForList`
+        )
+        
+        // Assuming the API returns an array of strings or objects with a name property
+        const list = response.data.categories;
+
+        // If items are objects, extract the name/title property
+        const industryNames = list.map((item: any) => 
+          typeof item === 'string' ? item : item.name 
+        )
+
+        setIndustryCreatedForList(industryNames)
+      } catch (error) {
+        console.error("Error fetching industry created for list:", error)
+        // Don't show error, just use empty list and allow manual input
+        setIndustryCreatedForList([])
+      } finally {
+        setIsLoadingCreatedFor(false)
+      }
+    }
+
+    fetchIndustryCreatedForList()
+  }, [])
+
   function resetForm() {
     setNaicsCode("")
     setIndustryName("")
@@ -80,6 +130,7 @@ export function AddKnowledgeBaseDialog() {
     setCustomPrimaryIndustry("")
     setCountry("USA")
     setTargetIndustry("")
+    setSearchValue("")
     setDisplay(true)
     setNaicsError("")
   }
@@ -146,7 +197,6 @@ export function AddKnowledgeBaseDialog() {
     setIsSubmitting(true)
 
     try {
-      // Build the payload based on whether "Others" is selected
       const payload: any = {
         industry: industryName.trim(),
         country: country,
@@ -154,15 +204,13 @@ export function AddKnowledgeBaseDialog() {
         display: display,
       }
 
-      // If "Others" is selected, send the custom value with a specific key
       if (primaryIndustry === "Others") {
         payload.other_primary_industry = customPrimaryIndustry.trim()
-        payload.primary_industry = customPrimaryIndustry.trim();
+        payload.primary_industry = customPrimaryIndustry.trim()
       } else {
         payload.primary_industry = primaryIndustry.trim()
       }
 
-      // Call the generateMEP API
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/generateIndustryKb`,
         payload
@@ -170,9 +218,7 @@ export function AddKnowledgeBaseDialog() {
 
       console.log("MEP generated successfully:", response.data)
 
-      // Refresh the knowledge base list after successful API call
       refresh()
-
       resetForm()
       setOpen(false)
     } catch (error) {
@@ -195,6 +241,14 @@ export function AddKnowledgeBaseDialog() {
       setNaicsError("")
     }
   }, [country])
+
+  // Filter industries based on search
+  const filteredIndustries = React.useMemo(() => {
+    if (!searchValue) return industryCreatedForList
+    return industryCreatedForList.filter((industry) =>
+      industry.toLowerCase().includes(searchValue.toLowerCase())
+    )
+  }, [searchValue, industryCreatedForList])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -327,16 +381,79 @@ export function AddKnowledgeBaseDialog() {
             />
           </div>
 
-          {/* Industry Created For */}
+          {/* Industry Created For - Combobox */}
           <div className="grid gap-2">
             <Label htmlFor="targetIndustry">Industry Created For</Label>
-            <Input
-              id="targetIndustry"
-              type="text"
-              value={targetIndustry}
-              onChange={(e) => setTargetIndustry(e.target.value)}
-              placeholder="e.g., Healthcare Providers"
-            />
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-full justify-between"
+                  disabled={isLoadingCreatedFor}
+                >
+                  {targetIndustry || "Select or type industry..."}
+                  {isLoadingCreatedFor ? (
+                    <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
+                  ) : (
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                  <CommandInput
+                    placeholder="Search or type new industry..."
+                    value={searchValue}
+                    onValueChange={setSearchValue}
+                  />
+                  <CommandList>
+                    <CommandEmpty>
+                      {searchValue ? (
+                        <div className="p-2">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setTargetIndustry(searchValue)
+                              setComboboxOpen(false)
+                              setSearchValue("")
+                            }}
+                          >
+                            <Check className="mr-2 h-4 w-4 opacity-0" />
+                            Use "{searchValue}"
+                          </Button>
+                        </div>
+                      ) : (
+                        "No industries found."
+                      )}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      {filteredIndustries.map((industry) => (
+                        <CommandItem
+                          key={industry}
+                          value={industry}
+                          onSelect={() => {
+                            setTargetIndustry(industry)
+                            setComboboxOpen(false)
+                            setSearchValue("")
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              targetIndustry === industry ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {industry}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Display Toggle */}
