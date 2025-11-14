@@ -105,10 +105,10 @@ export function AddKnowledgeBaseDialog() {
         // Assuming the API returns an array of strings or objects with a name property
         const list = response.data.categories;
 
-        // If items are objects, extract the name/title property
-        const industryNames = list.map((item: any) => 
-          typeof item === 'string' ? item : item.name 
-        )
+        // If items are objects, extract the name/title property and filter out null/undefined
+        const industryNames = list
+          .map((item: any) => typeof item === 'string' ? item : item?.name)
+          .filter((name: any) => name != null && name !== '')
 
         setIndustryCreatedForList(industryNames)
       } catch (error) {
@@ -244,8 +244,18 @@ export function AddKnowledgeBaseDialog() {
 
   // Filter industries based on search
   const filteredIndustries = React.useMemo(() => {
-    if (!searchValue) return industryCreatedForList
-    return industryCreatedForList.filter((industry) =>
+    if (!industryCreatedForList || industryCreatedForList.length === 0) {
+      return []
+    }
+    
+    // Filter out null/undefined values first
+    const validIndustries = industryCreatedForList.filter((industry) => industry != null && industry !== '')
+    
+    if (!searchValue) {
+      return validIndustries
+    }
+    
+    return validIndustries.filter((industry) =>
       industry.toLowerCase().includes(searchValue.toLowerCase())
     )
   }, [searchValue, industryCreatedForList])
@@ -402,7 +412,7 @@ export function AddKnowledgeBaseDialog() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0" align="start">
-                <Command>
+                <Command shouldFilter={false}>
                   <CommandInput
                     placeholder="Search or type new industry..."
                     value={searchValue}
@@ -429,27 +439,29 @@ export function AddKnowledgeBaseDialog() {
                         "No industries found."
                       )}
                     </CommandEmpty>
-                    <CommandGroup>
-                      {filteredIndustries.map((industry) => (
-                        <CommandItem
-                          key={industry}
-                          value={industry}
-                          onSelect={() => {
-                            setTargetIndustry(industry)
-                            setComboboxOpen(false)
-                            setSearchValue("")
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              targetIndustry === industry ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {industry}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
+                    {filteredIndustries && filteredIndustries.length > 0 && (
+                      <CommandGroup>
+                        {filteredIndustries.map((industry) => (
+                          <CommandItem
+                            key={industry}
+                            value={industry}
+                            onSelect={() => {
+                              setTargetIndustry(industry)
+                              setComboboxOpen(false)
+                              setSearchValue("")
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                targetIndustry === industry ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {industry}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
                   </CommandList>
                 </Command>
               </PopoverContent>
