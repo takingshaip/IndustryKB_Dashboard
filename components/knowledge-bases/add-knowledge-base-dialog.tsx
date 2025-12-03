@@ -33,6 +33,12 @@ import { Loader2, Check, ChevronsUpDown } from "lucide-react"
 import axios from "axios"
 import { cn } from "@/lib/utils"
 
+type IndustryOption = {
+  id: string
+  name: string
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 const COUNTRIES = ["USA", "Canada", "United Kingdom", "Germany", "India", "Australia", "Japan"]
 
 export function AddKnowledgeBaseDialog() {
@@ -43,17 +49,21 @@ export function AddKnowledgeBaseDialog() {
   const [industryName, setIndustryName] = React.useState<string>("")
   const [country, setCountry] = React.useState<string>("USA")
   const [targetIndustry, setTargetIndustry] = React.useState<string>("")
-  const [primaryIndustry, setPrimaryIndustry] = React.useState<string>("")
-  const [customPrimaryIndustry, setCustomPrimaryIndustry] = React.useState<string>("")
   const [display, setDisplay] = React.useState<boolean>(true)
   const [isLoadingNaics, setIsLoadingNaics] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [naicsError, setNaicsError] = React.useState<string>("")
 
-  // State for industry categories
-  const [industryCategories, setIndustryCategories] = React.useState<string[]>([])
-  const [isLoadingCategories, setIsLoadingCategories] = React.useState(false)
-  const [categoriesError, setCategoriesError] = React.useState<string>("")
+  const [primaryIndustries, setPrimaryIndustries] = React.useState<IndustryOption[]>([])
+  const [isLoadingPrimaryIndustries, setIsLoadingPrimaryIndustries] = React.useState(false)
+  const [primaryIndustriesError, setPrimaryIndustriesError] = React.useState<string>("")
+  const [selectedPrimaryIndustryId, setSelectedPrimaryIndustryId] = React.useState<string>("")
+  const [selectedPrimaryIndustryName, setSelectedPrimaryIndustryName] = React.useState<string>("")
+
+  const [secondaryIndustries, setSecondaryIndustries] = React.useState<IndustryOption[]>([])
+  const [isLoadingSecondaryIndustries, setIsLoadingSecondaryIndustries] = React.useState(false)
+  const [secondaryIndustriesError, setSecondaryIndustriesError] = React.useState<string>("")
+  const [selectedSecondaryIndustryId, setSelectedSecondaryIndustryId] = React.useState<string>("")
 
   // State for Industry Created For combobox
   const [industryCreatedForList, setIndustryCreatedForList] = React.useState<string[]>([])
@@ -63,33 +73,31 @@ export function AddKnowledgeBaseDialog() {
 
   const isValidNaicsCode = /^\d{6}$/.test(naicsCode)
 
-  // Fetch industry categories on component mount
   React.useEffect(() => {
-    async function fetchIndustryCategories() {
-      setIsLoadingCategories(true)
-      setCategoriesError("")
+    async function fetchPrimaryIndustries() {
+      setIsLoadingPrimaryIndustries(true)
+      setPrimaryIndustriesError("")
 
       try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/getIndustryCategories/`
+        const response = await axios.get(`${API_BASE_URL}/industries/primary`)
+        const industries = (Array.isArray(response.data) ? response.data : response.data?.industries || []).map(
+          (item: any) => ({
+            id: item._id || item.id || "",
+            name: item.name || "",
+          })
         )
-      
-        const categories = response.data.categories.map((item: any) => item.name)
+        const filteredIndustries = industries.filter((industry) => industry.id && industry.name)
 
-        if (!categories.includes("Others")) {
-          categories.push("Others")
-        }
-
-        setIndustryCategories(categories)
+        setPrimaryIndustries(filteredIndustries)
       } catch (error) {
-        console.error("Error fetching industry categories:", error)
-        setCategoriesError("Failed to load industry categories")
+        console.error("Error fetching primary industries:", error)
+        setPrimaryIndustriesError("Failed to load primary industries")
       } finally {
-        setIsLoadingCategories(false)
+        setIsLoadingPrimaryIndustries(false)
       }
     }
 
-    fetchIndustryCategories()
+    fetchPrimaryIndustries()
   }, [])
 
   // Fetch Industry Created For list
@@ -123,16 +131,61 @@ export function AddKnowledgeBaseDialog() {
     fetchIndustryCreatedForList()
   }, [])
 
+  React.useEffect(() => {
+    if (!selectedPrimaryIndustryId) {
+      setSecondaryIndustries([])
+      setSecondaryIndustriesError("")
+      setSelectedSecondaryIndustryId("")
+      setSelectedPrimaryIndustryName("")
+      setIndustryName("")
+      return
+    }
+
+    async function fetchSecondaryIndustries() {
+      setIsLoadingSecondaryIndustries(true)
+      setSecondaryIndustriesError("")
+      setSecondaryIndustries([])
+      setSelectedSecondaryIndustryId("")
+      setIndustryName("")
+
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL}/industries/secondary/${selectedPrimaryIndustryId}`
+        )
+
+        const industries = (Array.isArray(response.data) ? response.data : response.data?.industries || []).map(
+          (item: any) => ({
+            id: item._id || item.id || "",
+            name: item.name || "",
+          })
+        )
+
+        const filteredIndustries = industries.filter((industry) => industry.id && industry.name)
+
+        setSecondaryIndustries(filteredIndustries)
+      } catch (error) {
+        console.error("Error fetching secondary industries:", error)
+        setSecondaryIndustriesError("Failed to load secondary industries")
+      } finally {
+        setIsLoadingSecondaryIndustries(false)
+      }
+    }
+
+    fetchSecondaryIndustries()
+  }, [selectedPrimaryIndustryId])
+
   function resetForm() {
     setNaicsCode("")
     setIndustryName("")
-    setPrimaryIndustry("")
-    setCustomPrimaryIndustry("")
     setCountry("USA")
     setTargetIndustry("")
     setSearchValue("")
     setDisplay(true)
     setNaicsError("")
+    setSelectedPrimaryIndustryId("")
+    setSelectedPrimaryIndustryName("")
+    setSelectedSecondaryIndustryId("")
+    setSecondaryIndustries([])
   }
 
   async function fetchNaicsIndustryName() {
@@ -173,10 +226,6 @@ export function AddKnowledgeBaseDialog() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!industryName.trim()) {
-      alert("Please provide an industry name.")
-      return
-    }
     if (!country) {
       alert("Please select a target country.")
       return
@@ -185,12 +234,12 @@ export function AddKnowledgeBaseDialog() {
       alert("Please provide the industry created for.")
       return
     }
-    if (!primaryIndustry) {
+    if (!selectedPrimaryIndustryId || !selectedPrimaryIndustryName) {
       alert("Please select a primary industry.")
       return
     }
-    if (primaryIndustry === "Others" && !customPrimaryIndustry.trim()) {
-      alert("Please enter a custom industry name.")
+    if (!industryName.trim()) {
+      alert("Please select a secondary industry.")
       return
     }
 
@@ -204,12 +253,7 @@ export function AddKnowledgeBaseDialog() {
         display: display,
       }
 
-      if (primaryIndustry === "Others") {
-        payload.other_primary_industry = customPrimaryIndustry.trim()
-        payload.primary_industry = customPrimaryIndustry.trim()
-      } else {
-        payload.primary_industry = primaryIndustry.trim()
-      }
+      payload.primary_industry = selectedPrimaryIndustryName.trim()
 
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/marketentry-playbook/generateIndustryKb`,
@@ -237,7 +281,6 @@ export function AddKnowledgeBaseDialog() {
   React.useEffect(() => {
     if (country !== "USA") {
       setNaicsCode("")
-      setPrimaryIndustry("")
       setNaicsError("")
     }
   }, [country])
@@ -273,8 +316,8 @@ export function AddKnowledgeBaseDialog() {
           <DialogTitle>Add Knowledge Base</DialogTitle>
           <DialogDescription>
             {country === "USA"
-              ? "Enter a 6-digit NAICS code to auto-fill the industry, or type it manually."
-              : "Enter the industry name for your target country."}
+              ? "Select the primary and secondary industries. NAICS lookup is temporarily disabled."
+              : "Select the primary and secondary industries for your target country."}
           </DialogDescription>
         </DialogHeader>
 
@@ -297,9 +340,9 @@ export function AddKnowledgeBaseDialog() {
           </div>
 
           {/* NAICS code - Only show for USA */}
-          {country === "USA" && (
+          {/* {country === "USA" && (
             <div className="grid gap-2">
-              <Label htmlFor="naics">NAICS Code (optional)</Label>
+              <Label htmlFor="naics">NAICS Code (disabled for now)</Label>
               <div className="flex gap-2">
                 <Input
                   id="naics"
@@ -313,11 +356,12 @@ export function AddKnowledgeBaseDialog() {
                   placeholder="Enter 6-digit code"
                   maxLength={6}
                   className="flex-1"
+                  disabled
                 />
                 <Button
                   type="button"
                   onClick={fetchNaicsIndustryName}
-                  disabled={!isValidNaicsCode || isLoadingNaics}
+                  disabled
                   variant="outline"
                   className="shrink-0"
                 >
@@ -331,64 +375,98 @@ export function AddKnowledgeBaseDialog() {
                   )}
                 </Button>
               </div>
-              {naicsError && (
-                <p className="text-xs text-red-500">{naicsError}</p>
-              )}
-              {naicsCode && !naicsError && (
-                <p className="text-xs text-muted-foreground">
-                  {isValidNaicsCode
-                    ? "Click 'Fetch' to get the industry name from NAICS code"
-                    : "Enter a complete 6-digit NAICS code"}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                NAICS lookup is temporarily disabled and will be added later.
+              </p>
             </div>
-          )}
+          )} */}
 
           {/* Primary Industry Dropdown */}
           <div className="grid gap-2">
             <Label htmlFor="primaryIndustry">Primary Industry Name</Label>
-            {isLoadingCategories ? (
+            {isLoadingPrimaryIndustries ? (
               <div className="flex items-center justify-center p-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Loading industries...
               </div>
-            ) : categoriesError ? (
-              <div className="text-sm text-red-500">{categoriesError}</div>
-            ) : (
-              <Select value={primaryIndustry} onValueChange={setPrimaryIndustry}>
+            ) : primaryIndustriesError ? (
+              <div className="text-sm text-red-500">{primaryIndustriesError}</div>
+            ) : primaryIndustries.length > 0 ? (
+              <Select
+                value={selectedPrimaryIndustryId}
+                onValueChange={(value) => {
+                  setSelectedPrimaryIndustryId(value)
+                  const selected = primaryIndustries.find((industry) => industry.id === value)
+                  setSelectedPrimaryIndustryName(selected?.name || "")
+                }}
+              >
                 <SelectTrigger id="primaryIndustry" aria-label="Primary Industry">
                   <SelectValue placeholder="Select primary industry" />
                 </SelectTrigger>
                 <SelectContent>
-                  {industryCategories.map((industry) => (
-                    <SelectItem key={industry} value={industry}>
-                      {industry}
+                  {primaryIndustries.map((industry) => (
+                    <SelectItem key={industry.id} value={industry.id}>
+                      {industry.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            )}
-            {primaryIndustry === "Others" && (
-              <Input
-                type="text"
-                value={customPrimaryIndustry}
-                onChange={(e) => setCustomPrimaryIndustry(e.target.value)}
-                placeholder="Enter custom industry name"
-                className="mt-2"
-              />
+            ) : (
+              <div className="text-sm text-muted-foreground">No primary industries available.</div>
             )}
           </div>
 
           {/* Secondary Industry Name */}
           <div className="grid gap-2">
             <Label htmlFor="industryName">Secondary Industry Name</Label>
-            <Input
-              id="industryName"
-              type="text"
-              value={industryName}
-              onChange={(e) => setIndustryName(e.target.value)}
-              placeholder="e.g., Professional Services"
-            />
+            {isLoadingSecondaryIndustries ? (
+              <div className="flex items-center justify-center p-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Loading secondary industries...
+              </div>
+            ) : secondaryIndustriesError ? (
+              <div className="text-sm text-red-500">{secondaryIndustriesError}</div>
+            ) : (
+              <Select
+                value={selectedSecondaryIndustryId}
+                onValueChange={(value) => {
+                  setSelectedSecondaryIndustryId(value)
+                  const selected = secondaryIndustries.find((industry) => industry.id === value)
+                  setIndustryName(selected?.name || "")
+                }}
+                disabled={!selectedPrimaryIndustryId || isLoadingPrimaryIndustries}
+              >
+                <SelectTrigger id="industryName" aria-label="Secondary Industry">
+                  <SelectValue
+                    placeholder={
+                      selectedPrimaryIndustryId
+                        ? "Select secondary industry"
+                        : "Select a primary industry first"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {secondaryIndustries.map((industry) => (
+                    <SelectItem key={industry.id} value={industry.id}>
+                      {industry.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!selectedPrimaryIndustryId && (
+              <p className="text-xs text-muted-foreground">
+                Choose a primary industry to load secondary options.
+              </p>
+            )}
+            {selectedPrimaryIndustryId &&
+              !isLoadingSecondaryIndustries &&
+              !secondaryIndustriesError &&
+              secondaryIndustries.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No secondary industries found for the selected primary industry.
+                </p>
+              )}
           </div>
 
           {/* Industry Created For - Combobox */}
