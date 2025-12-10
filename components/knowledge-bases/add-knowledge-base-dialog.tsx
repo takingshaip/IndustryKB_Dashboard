@@ -329,7 +329,7 @@ export function AddKnowledgeBaseDialog() {
           <div className="grid gap-2">
             <Label htmlFor="country">Target Country</Label>
             <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger id="country" aria-label="Target Country">
+              <SelectTrigger id="country" aria-label="Target Country" className="w-full">
                 <SelectValue placeholder="Select a country" />
               </SelectTrigger>
               <SelectContent>
@@ -403,13 +403,16 @@ export function AddKnowledgeBaseDialog() {
                   setSelectedPrimaryIndustryName(selected?.name || "")
                 }}
               >
-                <SelectTrigger id="primaryIndustry" aria-label="Primary Industry">
-                  <SelectValue placeholder="Select primary industry" />
-                </SelectTrigger>
-                <SelectContent>
+                                              <SelectTrigger id="primaryIndustry" aria-label="Primary Industry" className="w-full min-w-0">
+                                                <span className="truncate flex-1 text-left min-w-0 block">
+                                                  <SelectValue placeholder="Select primary industry" />
+                                                </span>
+                                              </SelectTrigger>                <SelectContent className="max-h-[300px] max-w-[300px] sm:max-w-[460px]">
                   {primaryIndustries.map((industry) => (
                     <SelectItem key={industry.id} value={industry.id}>
-                      {industry.name}
+                      <span className="truncate block" title={industry.name}>
+                        {industry.name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -439,19 +442,23 @@ export function AddKnowledgeBaseDialog() {
                 }}
                 disabled={!selectedPrimaryIndustryId || isLoadingPrimaryIndustries}
               >
-                <SelectTrigger id="industryName" aria-label="Secondary Industry">
-                  <SelectValue
-                    placeholder={
-                      selectedPrimaryIndustryId
-                        ? "Select secondary industry"
-                        : "Select a primary industry first"
-                    }
-                  />
+                <SelectTrigger id="industryName" aria-label="Secondary Industry" className="w-full min-w-0">
+                  <span className="truncate flex-1 text-left min-w-0 block">
+                    <SelectValue
+                      placeholder={
+                        selectedPrimaryIndustryId
+                          ? "Select secondary industry"
+                          : "Select a primary industry first"
+                      }
+                    />
+                  </span>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px] max-w-[300px] sm:max-w-[460px]">
                   {secondaryIndustries.map((industry) => (
                     <SelectItem key={industry.id} value={industry.id}>
-                      {industry.name}
+                      <span className="truncate block" title={industry.name}>
+                        {industry.name}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -484,7 +491,9 @@ export function AddKnowledgeBaseDialog() {
                   className="w-full justify-between"
                   disabled={isLoadingCreatedFor}
                 >
-                  {targetIndustry || "Select or type industry..."}
+                  <span className="truncate text-left flex-1">
+                    {targetIndustry || "Select or type industry..."}
+                  </span>
                   {isLoadingCreatedFor ? (
                     <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
                   ) : (
@@ -492,7 +501,7 @@ export function AddKnowledgeBaseDialog() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-0" align="start">
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                 <Command shouldFilter={false}>
                   <CommandInput
                     placeholder="Search or type new industry..."
@@ -538,7 +547,9 @@ export function AddKnowledgeBaseDialog() {
                                 targetIndustry === industry ? "opacity-100" : "opacity-0"
                               )}
                             />
-                            {industry}
+                            <span className="truncate" title={industry}>
+                              {industry}
+                            </span>
                           </CommandItem>
                         ))}
                       </CommandGroup>
