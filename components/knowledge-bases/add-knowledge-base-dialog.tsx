@@ -50,6 +50,7 @@ export function AddKnowledgeBaseDialog() {
   const [country, setCountry] = React.useState<string>("USA")
   const [targetIndustry, setTargetIndustry] = React.useState<string>("")
   const [display, setDisplay] = React.useState<boolean>(true)
+  const [useSaasIndustry, setUseSaasIndustry] = React.useState<boolean>(true)
   const [isLoadingNaics, setIsLoadingNaics] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [naicsError, setNaicsError] = React.useState<string>("")
@@ -181,6 +182,7 @@ export function AddKnowledgeBaseDialog() {
     setTargetIndustry("")
     setSearchValue("")
     setDisplay(true)
+    setUseSaasIndustry(true)
     setNaicsError("")
     setSelectedPrimaryIndustryId("")
     setSelectedPrimaryIndustryName("")
@@ -251,6 +253,7 @@ export function AddKnowledgeBaseDialog() {
         country: country,
         industry_created_for: targetIndustry.trim(),
         display: display,
+        use_saas_industry: useSaasIndustry,
       }
 
       payload.primary_industry = selectedPrimaryIndustryName.trim()
@@ -544,6 +547,21 @@ export function AddKnowledgeBaseDialog() {
                 </Command>
               </PopoverContent>
             </Popover>
+          </div>
+
+          {/* Tech / Non-tech Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="useSaasIndustry">Tech Industry</Label>
+              <p className="text-xs text-muted-foreground">
+                Toggle off for non-tech industries
+              </p>
+            </div>
+            <Switch
+              id="useSaasIndustry"
+              checked={useSaasIndustry}
+              onCheckedChange={setUseSaasIndustry}
+            />
           </div>
 
           {/* Display Toggle */}
