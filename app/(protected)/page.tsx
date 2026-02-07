@@ -1,6 +1,6 @@
-import { Suspense } from "react"
-import { KnowledgeBaseTable } from "@/components/knowledge-bases/knowledge-base-table"
-import { AddKnowledgeBaseDialog } from "@/components/knowledge-bases/add-knowledge-base-dialog"
+import { Suspense } from 'react'
+import { KnowledgeBaseTable } from '@/components/knowledge-bases/knowledge-base-table'
+import { AddKnowledgeBaseDialog } from '@/components/knowledge-bases/add-knowledge-base-dialog'
 
 export default function HomePage() {
   return (
