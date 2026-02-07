@@ -5,9 +5,9 @@ import { redirect } from 'next/navigation'
 const SESSION_COOKIE = 'kb_session'
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8
 
-const LOGIN_USERNAME = process.env.NEXT_PUBLIC_LOGIN_USERNAME ?? ''
-const LOGIN_PASSWORD = process.env.NEXT_PUBLIC_LOGIN_PASSWORD ?? ''
-const SESSION_SECRET = process.env.NEXT_PUBLIC_LOGIN_SECRET ?? LOGIN_PASSWORD
+const LOGIN_USERNAME = process.env.KB_LOGIN_USERNAME ?? ''
+const LOGIN_PASSWORD = process.env.KB_LOGIN_PASSWORD?? ''
+const SESSION_SECRET = process.env.KB_LOGIN_SECRET ?? LOGIN_PASSWORD
 
 function safeEqual(a: string, b: string) {
   const aBuffer = Buffer.from(a)
