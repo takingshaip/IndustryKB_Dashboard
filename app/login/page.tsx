@@ -39,8 +39,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       redirect('/login?error=config')
     }
 
-    const username = String(formData.get('username') ?? '').trim()
-    const password = String(formData.get('password') ?? '')
+    const readField = (key: string) => {
+      const direct = formData.get(key)
+      if (direct !== null) {
+        return String(direct)
+      }
+      const matchKey = Array.from(formData.keys()).find((name) =>
+        name.endsWith(`_${key}`),
+      )
+      return matchKey ? String(formData.get(matchKey) ?? '') : ''
+    }
+
+    const username = readField('username').trim()
+    const password = readField('password')
 
     if (!validateCredentials(username, password)) {
       redirect('/login?error=invalid')
